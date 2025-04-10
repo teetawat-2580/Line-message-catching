@@ -1,0 +1,25 @@
+{
+  "name": "line-app---webhook---message-catching---js",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000L\u0000i\u0000n\u0000e\u0000-\u0000m\u0000e\u0000s\u0000s\u0000a\u0000g\u0000e\u0000-\u0000c\u0000a\u0000t\u0000c\u0000h\u0000i\u0000n\u0000g\u0000\r\u0000 \u0000",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teetawat-2580/Line-message-catching.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/teetawat-2580/Line-message-catching/issues"
+  },
+  "homepage": "https://github.com/teetawat-2580/Line-message-catching#readme",
+  "dependencies": {
+    "@line/bot-sdk": "^9.8.0",
+    "express": "^5.1.0"
+  }
+}
