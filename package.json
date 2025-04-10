@@ -20,6 +20,7 @@
   "homepage": "https://github.com/teetawat-2580/Line-message-catching#readme",
   "dependencies": {
     "@line/bot-sdk": "^9.8.0",
+    "dotenv": "^16.4.7",
     "express": "^5.1.0"
   }
 }
