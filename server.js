@@ -216,6 +216,21 @@ app.post('/webhook', line.middleware(config), (req, res) => {
   });
 });
 
+app.post('/webhook', (req, res) => {
+    const signature = crypto.createHmac('sha256', process.env.CHANNEL_SECRET)
+      .update(JSON.stringify(req.body))
+      .digest('base64');
+  
+    if (signature !== req.headers['x-line-signature']) {
+      console.error('Manual validation failed');
+      return res.status(401).end();
+    }
+  
+    // Process valid request
+    res.status(200).end();
+    handleEvent(req.body.events[0]);
+  });
+
 // Server Start
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
