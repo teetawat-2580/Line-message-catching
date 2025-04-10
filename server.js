@@ -5,6 +5,13 @@ console.log('Checking environment variables...');
 console.log('CHANNEL_ACCESS_TOKEN exists?', !!process.env.CHANNEL_ACCESS_TOKEN);
 console.log('CHANNEL_SECRET exists?', !!process.env.CHANNEL_SECRET);
 
+// Add right after require('dotenv').config();
+console.log('=== ENV VERIFICATION ===');
+console.log('CHANNEL_SECRET length:', process.env.CHANNEL_SECRET?.length);
+console.log('Webhook URL:', `${process.env.RENDER_EXTERNAL_URL}/webhook`);
+
+
+
 // Crash immediately if missing credentials
 if (!process.env.CHANNEL_ACCESS_TOKEN || !process.env.CHANNEL_SECRET) {
   console.error('❌ Missing LINE configuration!');
@@ -55,6 +62,23 @@ app.get('/', (req, res) => {
   });
 });
 
+// Add improved error handling
+app.post('/webhook', 
+    line.middleware(config),
+    (req, res) => res.status(200).end(),
+    (err, req, res, next) => {
+      if (err instanceof line.SignatureValidationFailed) {
+        console.error('Signature failed. Received:', {
+          signature: req.headers['x-line-signature'],
+          body: req.body,
+          secret: process.env.CHANNEL_SECRET?.substring(0, 4) + '...'
+        });
+        return res.status(401).send('Invalid signature');
+      }
+      next(err);
+    }
+  );
+
 // Webhook Handler
 app.post('/webhook', line.middleware(config), (req, res) => {
   // Immediate response to LINE server
@@ -64,6 +88,15 @@ app.post('/webhook', line.middleware(config), (req, res) => {
   Promise.all(req.body.events.map(handleEvent))
     .catch(err => console.error('Event processing error:', err));
 });
+
+// Add this middleware before your webhook handler
+app.use((req, res, next) => {
+    console.log('Received headers:', {
+      'x-line-signature': req.headers['x-line-signature'],
+      'user-agent': req.headers['user-agent']
+    });
+    next();
+  });
 
 // Event Handler
 async function handleEvent(event) {
