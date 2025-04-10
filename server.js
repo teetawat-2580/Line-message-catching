@@ -1,8 +1,5 @@
 require('dotenv').config();
 
-// MUST BE THE FIRST LINE IN YOUR FILE
-require('dotenv').config();
-
 // Add this right after dotenv config
 console.log('Checking environment variables...');
 console.log('CHANNEL_ACCESS_TOKEN exists?', !!process.env.CHANNEL_ACCESS_TOKEN);
@@ -17,14 +14,20 @@ if (!process.env.CHANNEL_ACCESS_TOKEN || !process.env.CHANNEL_SECRET) {
   process.exit(1);
 }
 
+// In your server.js, add this verification right after config:
+console.log('Verifying LINE configuration...');
+console.log('ChannelSecret length:', process.env.CHANNEL_SECRET?.length);
+// Should show 32 for correct secret
+
 const express = require('express');
 const line = require('@line/bot-sdk');
 
-// LINE SDK Configuration
+// Replace your current config with:
 const config = {
-  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
-  channelSecret: process.env.CHANNEL_SECRET
-};
+    channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
+    channelSecret: process.env.CHANNEL_SECRET,
+    verify: true // Ensure signature verification is enabled
+  };
 
 const app = express();
 const client = new line.Client(config);
@@ -32,6 +35,16 @@ const client = new line.Client(config);
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Add this right after your webhook handler
+app.use((err, req, res, next) => {
+    if (err instanceof line.SignatureValidationFailed) {
+      console.error('⚠️ Signature validation failed:', err);
+      res.status(401).send('Invalid signature');
+      return;
+    }
+    next(err);
+  });
 
 // Health Check
 app.get('/', (req, res) => {
@@ -112,6 +125,22 @@ app.post('/webhook-debug', line.middleware(config), (req, res) => {
     res.status(200).json({ userId });
   });
 
+  app.post('/webhook', (req, res) => {
+    console.log('User ID:', req.body.events[0]?.source?.userId);
+    res.status(200).end();
+  });
+
+app.post('/webhook', line.middleware(config), (req, res) => {
+  console.log('✅ Received valid LINE webhook');
+  res.status(200).end();
+  
+  req.body.events.forEach(event => {
+    handleEvent(event).catch(err => {
+      console.error('Event error:', err);
+    });
+  });
+});
+
 // Server Start
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
@@ -119,7 +148,3 @@ app.listen(PORT, () => {
   console.log(`Webhook URL: ${process.env.RENDER_EXTERNAL_URL || 'https://your-render-url.onrender.com'}/webhook`);
 });
 
-app.post('/webhook', (req, res) => {
-    console.log('User ID:', req.body.events[0]?.source?.userId);
-    res.status(200).end();
-  });
