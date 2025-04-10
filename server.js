@@ -1,4 +1,22 @@
 require('dotenv').config();
+
+// MUST BE THE FIRST LINE IN YOUR FILE
+require('dotenv').config();
+
+// Add this right after dotenv config
+console.log('Checking environment variables...');
+console.log('CHANNEL_ACCESS_TOKEN exists?', !!process.env.CHANNEL_ACCESS_TOKEN);
+console.log('CHANNEL_SECRET exists?', !!process.env.CHANNEL_SECRET);
+
+// Crash immediately if missing credentials
+if (!process.env.CHANNEL_ACCESS_TOKEN || !process.env.CHANNEL_SECRET) {
+  console.error('❌ Missing LINE configuration!');
+  console.error('   Create a .env file with:');
+  console.error('   CHANNEL_ACCESS_TOKEN=your_token_here');
+  console.error('   CHANNEL_SECRET=your_secret_here');
+  process.exit(1);
+}
+
 const express = require('express');
 const line = require('@line/bot-sdk');
 
@@ -87,9 +105,21 @@ async function handleEvent(event) {
   }
 }
 
+// Add this right before app.listen()
+app.post('/webhook-debug', line.middleware(config), (req, res) => {
+    const userId = req.body.events[0]?.source?.userId;
+    console.log('Your User ID is:', userId);
+    res.status(200).json({ userId });
+  });
+
 // Server Start
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Webhook URL: ${process.env.RENDER_EXTERNAL_URL || 'https://your-render-url.onrender.com'}/webhook`);
 });
+
+app.post('/webhook', (req, res) => {
+    console.log('User ID:', req.body.events[0]?.source?.userId);
+    res.status(200).end();
+  });
