@@ -1,66 +1,53 @@
+require('dotenv').config();
 const express = require('express');
 const line = require('@line/bot-sdk');
 
 const config = {
-  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN || 'YOUR_CHANNEL_ACCESS_TOKEN',
-  channelSecret: process.env.CHANNEL_SECRET || 'YOUR_CHANNEL_SECRET'
+  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
+  channelSecret: process.env.CHANNEL_SECRET
 };
 
 const app = express();
 const client = new line.Client(config);
 
-// Middleware for JSON parsing
+// Critical middleware ordering
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint
+// Health check endpoint (required for Render)
 app.get('/', (req, res) => {
-    res.status(200).json({ status: 'healthy' });
-  });
+  res.status(200).json({ status: 'active', timestamp: new Date() });
+});
 
-// Your personal LINE user ID (who will receive notifications)
-const YOUR_USER_ID = process.env.YOUR_USER_ID || 'YOUR_PERSONAL_LINE_USER_ID';
-
-// Keyword to detect
-const KEYWORD = 'urgent';
-
-// LINE Webhook - MUST MATCH your LINE Developer Console setting
+// Webhook endpoint - must match LINE Console exactly
 app.post('/webhook', line.middleware(config), (req, res) => {
-    // Immediate response to LINE
-    res.status(200).end();
-    
-    // Process events asynchronously
-    Promise.all(req.body.events.map(handleEvent))
-      .catch(err => console.error('Event handling error:', err));
-  });
+  // Immediate 200 response is CRUCIAL
+  res.status(200).end();
   
-
-// Root endpoint response
-app.get('/', (req, res) => {
-  res.send('LINE bot is running! Webhook is at POST /webhook');
+  // Process events asynchronously
+  Promise.all(req.body.events.map(handleEvent))
+    .catch(err => console.error('Processing error:', err));
 });
 
 async function handleEvent(event) {
-    if (event.type !== 'message' || event.message.type !== 'text') return;
-  
-    const keyword = 'urgent';
-    if (event.message.text.toLowerCase().includes(keyword)) {
-      try {
-        await client.pushMessage(process.env.YOUR_USER_ID, {
-          type: 'text',
-          text: `🚨 Urgent message detected from ${event.source.userId}:\n\n"${event.message.text}"`
-        });
-        console.log('Notification sent successfully');
-      } catch (err) {
-        console.error('Push message failed:', err);
-      }
+  if (event.type !== 'message' || event.message.type !== 'text') return;
+
+  if (event.message.text.toLowerCase().includes('urgent')) {
+    try {
+      const profile = await client.getProfile(event.source.userId);
+      await client.pushMessage(process.env.YOUR_USER_ID, {
+        type: 'text',
+        text: `🚨 Urgent from ${profile.displayName}:\n"${event.message.text}"`
+      });
+      console.log('Notification sent successfully');
+    } catch (err) {
+      console.error('Failed to send notification:', err);
     }
   }
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Webhook URL: https://your-render-service.onrender.com/webhook`);
 });
-
-app.get('/debug', (req, res) => {
-    res.send('Send any message to your bot and check server logs for your user ID');
-  });
